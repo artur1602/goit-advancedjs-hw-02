@@ -1,55 +1,44 @@
 import iziToast from 'izitoast';
 import 'izitoast/dist/css/iziToast.min.css';
 
-const userData = {};
-const form = document.querySelector('.form');
+function bindEvents() {
+  const form = document.querySelector('.form');
 
-form.addEventListener('input', handlerInput);
-form.addEventListener('submit', handlerSubmit);
-
-function handlerSubmit(event) {
-  event.preventDefault();
-
-  for (let i = 0; i < userData.amount; i += 1) {
-    const stepDelay = userData.delay + userData.step * i;
-    createPromise(i + 1, stepDelay)
-      .then(({ position, delay }) => {
-        // console.log(`✅ Fulfilled promise ${position} in ${delay}ms`);
-        iziToast.success({
-          message: `✅ Fulfilled promise ${position} in ${delay}ms`,
-        });
-      })
-      .catch(({ position, delay }) => {
-        // console.log(`❌ Rejected promise ${position} in ${delay}ms`);
-        iziToast.error({
-          message: `❌ Rejected promise ${position} in ${delay}ms`,
-        });
-      });
+  if (!form) {
+    return;
   }
-  form.reset();
-}
 
-function createPromise(position, delay) {
-  return new Promise((resolve, reject) => {
-    setTimeout(delay => {
-      const shouldResolve = Math.random() > 0.3;
-      if (shouldResolve) {
-        resolve({ position, delay });
-      } else {
-        reject({ position, delay });
-      }
-    }, delay);
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    const formData = new FormData(form);
+
+    const { delay, step, amount } = Object.fromEntries(formData);
+
+    createPromises(+delay, +step, +amount);
+
+    form.reset();
   });
 }
 
-function handlerInput({ target }) {
-  if (target.name === 'delay') {
-    userData.delay = +target.value;
-  }
-  if (target.name === 'step') {
-    userData.step = +target.value;
-  }
-  if (target.name === 'amount') {
-    userData.amount = +target.value;
-  }
+async function createPromises(firstDelay, stepDelay, amount) {
+  const promises = Array.from(Array(amount).keys()).map(index =>
+    createPromise(index, firstDelay + index * stepDelay)
+      .then(({ position, delay }) => {
+        iziToast.show({
+          message: `✅ Fulfilled promise ${position + 1} in ${delay}ms`,
+          color: 'green',
+          position: 'topRight',
+        });
+      })
+      .catch(({ position, delay }) => {
+        iziToast.show({
+          message: `❌ Rejected promise ${position + 1} in ${delay}ms`,
+          color: 'red',
+          position: 'topRight',
+        });
+      })
+  );
+  await Promise.all(promises);
 }
+
+bindEvents();
